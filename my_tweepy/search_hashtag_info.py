@@ -31,8 +31,9 @@ def scrape(words, date_since, numtweet):
 
     # We are using .Cursor() to search through twitter for the required tweets.
     # The number of tweets can be restricted using .items(number of tweets)
-    tweets = tweepy.Cursor(api.search, q=words, lang="en",
-                           since=date_since, tweet_mode='extended').items(numtweet)
+    tweets = tweepy.Paginator(api.search_recent_tweets, "Tweepy",
+                                  max_results=100)
+    
 
     # .Cursor() returns an iterable object. Each item in
     # the iterator has various attributes that you can access to

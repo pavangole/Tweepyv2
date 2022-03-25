@@ -283,42 +283,84 @@ class Search_View(TemplateView):
     def csv_data(self, tweets):
 
         import pandas as pd
+        for tweet in tweets:
+            if(tweet.id == None):
+                tweet.id = "none"
+            if(tweet.text == None):
+                tweet.text = "none"
+            if(tweet.attachments == None):
+                tweet.attachments = "none"
+            if(tweet.author_id == None):
+                tweet.author_id = "none"
+            if(tweet.context_annotations == None):
+                tweet.context_annotations = "none"
+            if(tweet.conversation_id == None):
+                tweet.conversation_id = "none"
+            if(tweet.created_at == None):
+                tweet.created_at = "none"
+            if(tweet.entities == None):
+                tweet.entities ="none"
+            if(tweet.geo == None):
+                tweet.geo = "none"
+            if(tweet.in_reply_to_user_id == None):
+                tweet.in_reply_to_user_id = "none"
+            if(tweet.lang == None):
+                tweet.lang = "none"
+            if(tweet.possibly_sensitive == None):
+                tweet.possibly_sensitive = "none"
+            if(tweet.public_metrics == None):
+                tweet.public_metrics = "none"
+            if(tweet.referenced_tweets == None):
+                tweet.referenced_tweets = "none"
+            if(tweet.reply_settings == None):
+                tweet.reply_settings = "none"
+            if(tweet.source == None):
+                tweet.source = "none"
+            if(tweet.withheld == None):
+                tweet.withheld = "none"
         rows = [
             [
-                tweet.created_at,
+
                 tweet.id,
-                tweet.full_text,
-                tweet.retweet_count,
-                tweet.favorite_count,
-                ",".join([hashtag["text"]
-                          for hashtag in tweet.entities["hashtags"]]),
-                tweet.user.id,
-                tweet.user.name,
-                tweet.user.screen_name,
-                tweet.user.followers_count,
-                tweet.user.friends_count,
-                tweet.user.verified,
-                tweet.user.statuses_count,
+                tweet.text,
+                tweet.attachments,
+                tweet.author_id,
+                tweet.context_annotations,
+                tweet.conversation_id,
+                tweet.created_at,
+                tweet.entities,
+                tweet.geo,
+                tweet.in_reply_to_user_id,
+                tweet.lang,
+                tweet.possibly_sensitive,
+                tweet.public_metrics,
+                tweet.referenced_tweets,
+                tweet.reply_settings,
+                tweet.source,
+                tweet.withheld
+
             ]
             for tweet in tweets
         ]
 
         cols = [
-            "created_at",
             "id",
             "text",
-            "retweet_count",
-            "likes",
-
-            "hashtags",
-
-            "user_id",
-            "user_name",
-            "user_screen_name",
-            "user_followers_count",
-            "user_friends_count",
-            "user_verified",
-            "user_no_of_tweets",
+            "attachments",
+            "author_id",
+            "context_annotations",
+            "conversation_id",
+            "created_at",
+            "entities",
+            "geo",
+            "in_reply_to_user_id",
+            "lang",
+            "possibly_sensitive",
+            "public_metrics",
+            "referenced_tweets",
+            "reply_settings",
+            "source",
+            "withheld"
         ]
 
         csv_df = pd.DataFrame(rows, columns=cols)
@@ -335,50 +377,65 @@ class Search_View(TemplateView):
         else:
             context["status"] = 'enter'
             try:
-                tweets = tweepy.Cursor(
-                    api.search, q=search, lang="en", tweet_mode='extended'
-                ).items(int(items))
+                
 
-                tweets = list(tweets)
+                for response in tweepy.Paginator(api.search_recent_tweets, query=search, tweet_fields=["id",
+                                                                                     "text",
+                                                                                     "attachments",
+                                                                                     "author_id",
+                                                                                     "context_annotations",
+                                                                                     "conversation_id",
+                                                                                     "entities",
+                                                                                     "geo",
+                                                                                     "in_reply_to_user_id",
+                                                                                     "lang",
+                                                                                     "possibly_sensitive",
+                                                                                     "public_metrics",
+                                                                                     "referenced_tweets",
+                                                                                     "reply_settings",
+                                                                                     "source",
+                                                                                     "withheld"],max_results=items, limit=1):
+                                                                                     pass
+                # tweets_json = [json.dumps(tweet._json, indent=4)
+                #                for tweet in tweets]
+                # print(tweets_json)
 
-                tweets_json = [json.dumps(tweet._json, indent=4)
-                               for tweet in tweets]
+                tweets = response.data
+                # context["data"] = zip(tweets, tweets_json)
 
-                context["data"] = zip(tweets, tweets_json)
-
-                context["csv_data"] = self.csv_data(tweets)
+                context["csv_data"]=self.csv_data(tweets)
 
             except (ValueError, TypeError) as error:
-                context["status"] = 'error'
-                context["error"] = 'Enter Values Properly'
+                context["status"]='error'
+                context["error"]='Enter Values Properly'
             except Exception as error:
                 print(error)
-                context["status"] = 'error'
-                context["error"] = error
-
+                context["status"]='error'
+                context["error"]=error
+        print(context)
         return context
 
 
 class User_Info_View(TemplateView):
-    template_name = 'Features_App/User_Info_Template.html'
+    template_name='Features_App/User_Info_Template.html'
 
     def get_context_data(self, *args, **kwargs):
-        context = super().get_context_data(*args, **kwargs)
+        context=super().get_context_data(*args, **kwargs)
 
         # getting username
-        username = self.request.GET.get('username', None)
+        username=self.request.GET.get('username', None)
 
         if username in (None, ""):
-            context["user_status"] = 'user_not_enter'
+            context["user_status"]='user_not_enter'
         else:
-            context["user_status"] = 'user_enter'
+            context["user_status"]='user_enter'
             try:
-                response = api.get_user(username)
-                json_responce = response._json
-                context["user"] = json_responce
-                context["user_json"] = json.dumps(json_responce, indent=4)
+                response=api.get_user(username)
+                json_responce=response._json
+                context["user"]=json_responce
+                context["user_json"]=json.dumps(json_responce, indent=4)
             except tweepy.TweepError as error:
-                context["user_status"] = 'user_not_found'
-                context["user_error"] = error
+                context["user_status"]='user_not_found'
+                context["user_error"]=error
 
         return context

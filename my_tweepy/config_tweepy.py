@@ -21,4 +21,4 @@ auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
 # initialize Tweepy API
 # api = tweepy.API(auth)
 # api = tweepy.API(auth, wait_on_rate_limit=True)
-api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+api = tweepy.Client(BEARER_TOKEN)
