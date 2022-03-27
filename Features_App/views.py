@@ -1,3 +1,4 @@
+from shutil import ExecError
 from django.views.generic import TemplateView
 from numpy.matrixlib.defmatrix import matrix
 from my_tweepy.config_tweepy import api, tweepy
@@ -38,14 +39,24 @@ class User_Most_Popular_Followers_View(TemplateView):
         else:
             context["status"] = 'enter'
             try:
-                followers_response = tweepy.Cursor(api.followers, user).items()
+                user = api.get_user(username=user).data.id
 
+                res_list = []
+                for response in tweepy.Paginator(api.get_users_followers,id = user,limit=10,max_results=1000):
+                    res_list.append(response)
+
+                
                 screen_name = []
                 followers_count = []
+                for response in res_list:
+                    followers_count.append(response.meta.get("result_count"))
 
-                for follower in followers_response:
-                    screen_name.append(follower.screen_name)
-                    followers_count.append(follower.followers_count)
+                
+                for follower in res_list:
+                    for tfollo in follower.data:
+                        screen_name.append(tfollo.name)
+
+                
 
                 context["screen_name_json"] = json.dumps(screen_name)
                 context["followers_count_json"] = json.dumps(followers_count)
@@ -154,9 +165,9 @@ class Compare_Tweets_View(TemplateView):
 
         for tweet in tweets:
             try:
-                tweet_responce = api.get_status(tweet)._json
+                tweet_responce = api.get_tweet(id = tweet)
 
-                user = tweet_responce["user"]["screen_name"]
+                user = tweet_responce["user"]["username"]
                 id = tweet_responce["id"]
                 tweets_found.append(f'{user} - {id}')
 
@@ -378,7 +389,6 @@ class Search_View(TemplateView):
             context["status"] = 'enter'
             try:
                 
-
                 for response in tweepy.Paginator(api.search_recent_tweets, query=search, tweet_fields=["id",
                                                                                      "text",
                                                                                      "attachments",
@@ -396,12 +406,13 @@ class Search_View(TemplateView):
                                                                                      "source",
                                                                                      "withheld"],max_results=items, limit=1):
                                                                                      pass
-                # tweets_json = [json.dumps(tweet._json, indent=4)
-                #                for tweet in tweets]
-                # print(tweets_json)
+                tweets = response.data                                                             
+                tweets_json = [json.dumps(tweet.data, indent=4)
+                               for tweet in tweets]
+                print(tweets_json)
 
-                tweets = response.data
-                # context["data"] = zip(tweets, tweets_json)
+                
+                context["data"] = zip(tweets, tweets_json)
 
                 context["csv_data"]=self.csv_data(tweets)
 
@@ -430,12 +441,12 @@ class User_Info_View(TemplateView):
         else:
             context["user_status"]='user_enter'
             try:
-                response=api.get_user(username)
-                json_responce=response._json
+                response=api.get_user(username=username,user_fields=["profile_image_url","verified","public_metrics"])
+                json_responce=response.data.data
                 context["user"]=json_responce
                 context["user_json"]=json.dumps(json_responce, indent=4)
-            except tweepy.TweepError as error:
+            except Exception as error:
                 context["user_status"]='user_not_found'
-                context["user_error"]=error
+                context["user_error"]= 'user_not_found'
 
         return context

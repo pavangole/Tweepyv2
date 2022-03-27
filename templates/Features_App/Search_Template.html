@@ -92,7 +92,7 @@
 						<div class="mdl-card__media">
 							{% autoescape off %}
 							<!-- tweet html format -->
-							{% tweet_tags tweet.user.screen_name tweet.id %}
+							{% tweet_tags tweet.author_id tweet.id %}
 							<!-- tweet html format -->
 							{% endautoescape %}
 						</div>
