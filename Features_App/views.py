@@ -4,7 +4,8 @@ from numpy.matrixlib.defmatrix import matrix
 from my_tweepy.config_tweepy import api, tweepy
 import json
 import requests
-
+import pandas as pd
+import math
 
 # converting to make csv file from the given data
 def get_csv_format(rows, cols, transpose=True):
@@ -291,46 +292,61 @@ class Search_View(TemplateView):
         twthtml = twtparse['html']
         return twthtml
 
-    def csv_data(self, tweets):
-
-        import pandas as pd
+    def csv_data(self,tweets):
+        public_metrics = []
+        dummy = []
+        rows = []
         for tweet in tweets:
-            if(tweet.id == None):
-                tweet.id = "none"
-            if(tweet.text == None):
-                tweet.text = "none"
-            if(tweet.attachments == None):
-                tweet.attachments = "none"
-            if(tweet.author_id == None):
-                tweet.author_id = "none"
-            if(tweet.context_annotations == None):
-                tweet.context_annotations = "none"
-            if(tweet.conversation_id == None):
-                tweet.conversation_id = "none"
-            if(tweet.created_at == None):
-                tweet.created_at = "none"
-            if(tweet.entities == None):
-                tweet.entities ="none"
-            if(tweet.geo == None):
-                tweet.geo = "none"
-            if(tweet.in_reply_to_user_id == None):
-                tweet.in_reply_to_user_id = "none"
-            if(tweet.lang == None):
-                tweet.lang = "none"
-            if(tweet.possibly_sensitive == None):
-                tweet.possibly_sensitive = "none"
-            if(tweet.public_metrics == None):
-                tweet.public_metrics = "none"
-            if(tweet.referenced_tweets == None):
-                tweet.referenced_tweets = "none"
-            if(tweet.reply_settings == None):
-                tweet.reply_settings = "none"
-            if(tweet.source == None):
-                tweet.source = "none"
-            if(tweet.withheld == None):
-                tweet.withheld = "none"
-        rows = [
-            [
+            # if(tweet.id == None):
+            #     tweet.id = "none"
+            # if(tweet.text == None):
+            #     tweet.text = "none"
+            # if(tweet.attachments == None):
+            #     tweet.attachments = "none"
+            # if(tweet.author_id == None):
+            #     tweet.author_id = "none"
+            # if(tweet.context_annotations == None):
+            #     tweet.context_annotations = "none"
+            # if(tweet.conversation_id == None):
+            #     tweet.conversation_id = "none"
+            # if(tweet.created_at == None):
+            #     tweet.created_at = "none"
+            # if(tweet.entities == None):
+            #     tweet.entities ="none"
+            # if(tweet.geo == None):
+            #     tweet.geo = "none"
+            # if(tweet.in_reply_to_user_id == None):
+            #     tweet.in_reply_to_user_id = "none"
+            # if(tweet.lang == None):
+            #     tweet.lang = "none"
+            # if(tweet.possibly_sensitive == None):
+            #     tweet.possibly_sensitive = "none"
+            # if(tweet.public_metrics == None):
+            #     tweet.public_metrics = "none"
+            # if(tweet.referenced_tweets == None):
+            #     tweet.referenced_tweets = "none"
+            # if(tweet.reply_settings == None):
+            #     tweet.reply_settings = "none"
+            # if(tweet.source == None):
+            #     tweet.source = "none"
+            # if(tweet.withheld == None):
+            #     tweet.withheld = "none"
+            
+            hashtags = tweet.entities.get("hashtags")
+            if hashtags is not None:
+                 dummy.append( ",".join([hashtag["tag"] for hashtag in hashtags]))
+            else:
+                dummy.append("None")
+                
+            
+            public_metrics.append([tweet.public_metrics.get("retweet_count"),
+                           tweet.public_metrics.get("reply_count"),
+                           tweet.public_metrics.get("like_count"),
+                           tweet.public_metrics.get("quote_count")
+                           
+                          ])
+
+            rows.append([
 
                 tweet.id,
                 tweet.text,
@@ -339,20 +355,39 @@ class Search_View(TemplateView):
                 tweet.context_annotations,
                 tweet.conversation_id,
                 tweet.created_at,
-                tweet.entities,
                 tweet.geo,
                 tweet.in_reply_to_user_id,
                 tweet.lang,
                 tweet.possibly_sensitive,
-                tweet.public_metrics,
                 tweet.referenced_tweets,
                 tweet.reply_settings,
                 tweet.source,
                 tweet.withheld
 
-            ]
-            for tweet in tweets
-        ]
+            ])
+            
+        # rows = [
+        #     [
+
+        #         tweet.id,
+        #         tweet.text,
+        #         tweet.attachments,
+        #         tweet.author_id,
+        #         tweet.context_annotations,
+        #         tweet.conversation_id,
+        #         tweet.created_at,
+        #         tweet.geo,
+        #         tweet.in_reply_to_user_id,
+        #         tweet.lang,
+        #         tweet.possibly_sensitive,
+        #         tweet.referenced_tweets,
+        #         tweet.reply_settings,
+        #         tweet.source,
+        #         tweet.withheld
+
+        #     ]
+        #     for tweet in tweets
+        # ]
 
         cols = [
             "id",
@@ -362,21 +397,27 @@ class Search_View(TemplateView):
             "context_annotations",
             "conversation_id",
             "created_at",
-            "entities",
             "geo",
             "in_reply_to_user_id",
             "lang",
             "possibly_sensitive",
-            "public_metrics",
             "referenced_tweets",
             "reply_settings",
             "source",
             "withheld"
         ]
-
+        public_me_col = ["retweet","reply","like","quote"]
+        hashtags_col = ["hashtags"]
+        dframe_public = pd.DataFrame(public_metrics)
+        dframe_public.columns = public_me_col
+        dframe_hashtags= pd.DataFrame(dummy)
+        dframe_hashtags.columns = hashtags_col
         csv_df = pd.DataFrame(rows, columns=cols)
+        frames = [csv_df,dframe_public,dframe_hashtags]
+        csv_df = pd.concat(frames,axis=1)
         csv_data = csv_df.to_csv()
         return csv_data
+          
 
     def get_context_data(self, *args, **kwargs):
         context = super().get_context_data(*args, **kwargs)
@@ -388,10 +429,18 @@ class Search_View(TemplateView):
         else:
             context["status"] = 'enter'
             try:
-                
+                max = int(items)
+                page = 1
+                if (int(items) > 100):
+                    max = 100
+                    page = math.ceil(int(items) / 100)
+                response_list = []
+                print("Max is ",max)
+                print("Page is ",page)
                 for response in tweepy.Paginator(api.search_recent_tweets, query=search, tweet_fields=["id",
                                                                                      "text",
                                                                                      "attachments",
+                                                                                     "created_at",
                                                                                      "author_id",
                                                                                      "context_annotations",
                                                                                      "conversation_id",
@@ -404,12 +453,13 @@ class Search_View(TemplateView):
                                                                                      "referenced_tweets",
                                                                                      "reply_settings",
                                                                                      "source",
-                                                                                     "withheld"],max_results=items, limit=1):
-                                                                                     pass
-                tweets = response.data                                                             
+                                                                                     "withheld"],max_results=max, limit=page):
+                                                                                     response_list.append(response)
+                tweets = []
+                for response in response_list:
+                    tweets.extend(response.data)                                                            
                 tweets_json = [json.dumps(tweet.data, indent=4)
                                for tweet in tweets]
-                print(tweets_json)
 
                 
                 context["data"] = zip(tweets, tweets_json)
@@ -418,12 +468,10 @@ class Search_View(TemplateView):
 
             except (ValueError, TypeError) as error:
                 context["status"]='error'
-                context["error"]='Enter Values Properly'
+                context["error"]= error
             except Exception as error:
-                print(error)
                 context["status"]='error'
                 context["error"]=error
-        print(context)
         return context
 
 

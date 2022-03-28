@@ -1,6 +1,7 @@
 # comman config code is in this file
 # for twitter api connection to key and creatig api object
 
+import json
 import tweepy
 from decouple import config
 
@@ -21,4 +22,4 @@ auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
 # initialize Tweepy API
 # api = tweepy.API(auth)
 # api = tweepy.API(auth, wait_on_rate_limit=True)
-api = tweepy.Client(BEARER_TOKEN)
+api = tweepy.Client(BEARER_TOKEN,CONSUMER_KEY,CONSUMER_SECRET,ACCESS_TOKEN,ACCESS_TOKEN_SECRET,return_type="json")
