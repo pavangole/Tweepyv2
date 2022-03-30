@@ -463,9 +463,10 @@ class Search_View(TemplateView):
 
                 
                 context["data"] = zip(tweets, tweets_json)
+            
 
                 context["csv_data"]=self.csv_data(tweets)
-
+                print(context["csv_data"])
             except (ValueError, TypeError) as error:
                 context["status"]='error'
                 context["error"]= error
