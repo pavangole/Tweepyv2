@@ -292,11 +292,42 @@ class Search_View(TemplateView):
         twthtml = twtparse['html']
         return twthtml
 
-    def csv_data(self,tweets):
+    def csv_data(self,tweets,includes):
+        ext = []
+        for users in includes:
+            page = users.get('users')
+            ext.extend(page)
+        user_info = []
+        upublic_metrics = []
         public_metrics = []
         dummy = []
         rows = []
         for tweet in tweets:
+            for user in ext:
+                if tweet.author_id == user.id:
+                    user_info.append(
+                        [
+                            user.name,
+                            user.location,
+                            user.url,
+                            user.created_at,
+                            user.description,
+                            user.username,
+                            user.profile_image_url,
+                            user.verified,
+                            user.protected,
+                            user.pinned_tweet_id
+                        ]
+                        
+                    
+                        
+                    )
+                    upublic_metrics.append([user.public_metrics.get("following_count"),
+                                user.public_metrics.get("followers_count"),
+                                user.public_metrics.get("tweet_count"),
+                                user.public_metrics.get("listed_count")
+                                
+                                ])
             # if(tweet.id == None):
             #     tweet.id = "none"
             # if(tweet.text == None):
@@ -406,6 +437,21 @@ class Search_View(TemplateView):
             "source",
             "withheld"
         ]
+        df_upub = pd.DataFrame(upublic_metrics)
+        df_upub.columns = ["following_count","followers_count","tweet_count","listed_count"]
+        df_userinfo = pd.DataFrame(user_info)
+        df_userinfo.columns = [
+                            "name",
+                            "location",
+                            "url",
+                            "created_at",
+                            "description",
+                            "username",
+                            "profile_image_url",
+                            "verified",
+                            "protected",
+                            "pinned_tweet_id"]
+
         public_me_col = ["retweet","reply","like","quote"]
         hashtags_col = ["hashtags"]
         dframe_public = pd.DataFrame(public_metrics)
@@ -413,7 +459,7 @@ class Search_View(TemplateView):
         dframe_hashtags= pd.DataFrame(dummy)
         dframe_hashtags.columns = hashtags_col
         csv_df = pd.DataFrame(rows, columns=cols)
-        frames = [csv_df,dframe_public,dframe_hashtags]
+        frames = [csv_df,dframe_public,dframe_hashtags,df_userinfo,df_upub]
         csv_df = pd.concat(frames,axis=1)
         csv_data = csv_df.to_csv()
         return csv_data
@@ -453,11 +499,27 @@ class Search_View(TemplateView):
                                                                                      "referenced_tweets",
                                                                                      "reply_settings",
                                                                                      "source",
-                                                                                     "withheld"],max_results=max, limit=page):
+                                                                                     "withheld"],
+                                                                                     expansions = ["author_id"],
+                                                                                    user_fields=["id",
+                                                                                                "name",
+                                                                                                "location",
+                                                                                                "url",
+                                                                                                "created_at",
+                                                                                                "description",
+                                                                                                "username",
+                                                                                                "profile_image_url",
+                                                                                                "public_metrics",
+                                                                                                "verified",
+                                                                                                "protected",
+                                                                                                "pinned_tweet_id"]
+                                                                                     ,max_results=max, limit=page):
                                                                                      response_list.append(response)
                 tweets = []
+                includes = []
                 for response in response_list:
-                    tweets.extend(response.data)                                                            
+                    tweets.extend(response.data)   
+                    includes.append(response.includes)                                                         
                 tweets_json = [json.dumps(tweet.data, indent=4)
                                for tweet in tweets]
 
@@ -465,7 +527,7 @@ class Search_View(TemplateView):
                 context["data"] = zip(tweets, tweets_json)
             
 
-                context["csv_data"]=self.csv_data(tweets)
+                context["csv_data"]=self.csv_data(tweets,includes)
                 print(context["csv_data"])
             except (ValueError, TypeError) as error:
                 context["status"]='error'
