@@ -328,40 +328,7 @@ class Search_View(TemplateView):
                                 user.public_metrics.get("listed_count")
                                 
                                 ])
-            # if(tweet.id == None):
-            #     tweet.id = "none"
-            # if(tweet.text == None):
-            #     tweet.text = "none"
-            # if(tweet.attachments == None):
-            #     tweet.attachments = "none"
-            # if(tweet.author_id == None):
-            #     tweet.author_id = "none"
-            # if(tweet.context_annotations == None):
-            #     tweet.context_annotations = "none"
-            # if(tweet.conversation_id == None):
-            #     tweet.conversation_id = "none"
-            # if(tweet.created_at == None):
-            #     tweet.created_at = "none"
-            # if(tweet.entities == None):
-            #     tweet.entities ="none"
-            # if(tweet.geo == None):
-            #     tweet.geo = "none"
-            # if(tweet.in_reply_to_user_id == None):
-            #     tweet.in_reply_to_user_id = "none"
-            # if(tweet.lang == None):
-            #     tweet.lang = "none"
-            # if(tweet.possibly_sensitive == None):
-            #     tweet.possibly_sensitive = "none"
-            # if(tweet.public_metrics == None):
-            #     tweet.public_metrics = "none"
-            # if(tweet.referenced_tweets == None):
-            #     tweet.referenced_tweets = "none"
-            # if(tweet.reply_settings == None):
-            #     tweet.reply_settings = "none"
-            # if(tweet.source == None):
-            #     tweet.source = "none"
-            # if(tweet.withheld == None):
-            #     tweet.withheld = "none"
+           
             
             hashtags = tweet.entities.get("hashtags")
             if hashtags is not None:
@@ -397,28 +364,6 @@ class Search_View(TemplateView):
 
             ])
             
-        # rows = [
-        #     [
-
-        #         tweet.id,
-        #         tweet.text,
-        #         tweet.attachments,
-        #         tweet.author_id,
-        #         tweet.context_annotations,
-        #         tweet.conversation_id,
-        #         tweet.created_at,
-        #         tweet.geo,
-        #         tweet.in_reply_to_user_id,
-        #         tweet.lang,
-        #         tweet.possibly_sensitive,
-        #         tweet.referenced_tweets,
-        #         tweet.reply_settings,
-        #         tweet.source,
-        #         tweet.withheld
-
-        #     ]
-        #     for tweet in tweets
-        # ]
 
         cols = [
             "id",
