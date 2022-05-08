@@ -277,20 +277,42 @@ class Search_View(TemplateView):
         return twthtml
 
     def csv_data(self, tweets, includes):
+        polls_info = []
         ext = []
         media_info = []
         media = []
         for users in includes:
             page = users.get('users')
             page1 = users.get('media')
+            poll_page = users.get('polls')
+            if poll_page:
+                polls_info.extend(poll_page)
             ext.extend(page)
             media_info.extend(page1)
-        print(media_info is None)
+    
         user_info = []
         public_metrics = []
         dummy = []
         rows = []
+        polls_list = []
         for tweet in tweets:
+
+            #Polls
+            if tweet['attachments'] and tweet['attachments'].get('poll_ids') is not None:
+                for pol in polls_info:
+                        if pol.id in tweet['attachments']['poll_ids']:
+                            polls_list.append([
+                                pol.id,
+                                pol.options,
+                                pol.duration_minutes,
+                                pol.end_datetime,
+                                pol.voting_status
+
+                            ])
+            else:
+                polls_list.append([None,None,None,None,None ])
+
+            #users
             for user in ext:
                 if tweet.author_id == user.id:
                     user_info.append([
@@ -304,6 +326,7 @@ class Search_View(TemplateView):
                         user.public_metrics.get("listed_count")
                     ])
 
+            #Media
             if tweet['attachments'] and tweet['attachments'].get(
                     'media_keys') is not None:
                 tmp = []
@@ -321,7 +344,8 @@ class Search_View(TemplateView):
                             'media_keys'):
                         media_key.append(medias['media_key']),
                         type1.append(medias['type']),
-                        url.append(medias['url']),
+                        if medias.get('url') is not None:
+                            url.append(medias['url']),
                         duration.append(medias['duration_ms']),
                         height.append(medias['height']),
                         image.append(medias['preview_image_url']),
@@ -344,6 +368,7 @@ class Search_View(TemplateView):
             else:
                 media.append([None])
 
+            #Hashtags
             hashtags = tweet.entities.get("hashtags")
             if hashtags is not None:
                 dummy.append(",".join([hashtag["tag"]
@@ -351,6 +376,7 @@ class Search_View(TemplateView):
             else:
                 dummy.append("None")
 
+            #PublicMetrics
             public_metrics.append([
                 tweet.public_metrics.get("retweet_count"),
                 tweet.public_metrics.get("reply_count"),
@@ -358,6 +384,7 @@ class Search_View(TemplateView):
                 tweet.public_metrics.get("quote_count")
             ])
 
+            #Tweets
             rows.append([
                 tweet.id, tweet.text, tweet.attachments, tweet.author_id,
                 tweet.context_annotations, tweet.conversation_id,
@@ -366,6 +393,7 @@ class Search_View(TemplateView):
                 tweet.reply_settings, tweet.source, tweet.withheld
             ])
 
+        #TweetColums
         cols = [
             "id", "text", "attachments", "author_id", "context_annotations",
             "conversation_id", "created_at", "geo", "in_reply_to_user_id",
@@ -373,6 +401,7 @@ class Search_View(TemplateView):
             "reply_settings", "source", "withheld"
         ]
 
+        #UserDataFrame
         df_userinfo = pd.DataFrame(user_info)
         df_userinfo.columns = [
             "name", "location", "url", "created_at", "description", "username",
@@ -380,21 +409,31 @@ class Search_View(TemplateView):
             "following_count", "followers_count", "tweet_count", "listed_count"
         ]
 
+        #Public Metrics 
         public_me_col = ["retweet", "reply", "like", "quote"]
         hashtags_col = ["hashtags"]
         dframe_public = pd.DataFrame(public_metrics)
         dframe_public.columns = public_me_col
         dframe_hashtags = pd.DataFrame(dummy)
         dframe_hashtags.columns = hashtags_col
+        #Tweets
         csv_df = pd.DataFrame(rows, columns=cols)
+
+        #Media
         df_media = pd.DataFrame(media)
         print("Ithe pan allo")
         df_media.columns = [
             "media_key ", "type", "url", "duration", "height", "image",
             "public", "width", "alt_text"
         ]
+        #Polls 
+        df_poll = pd.DataFrame(polls_list)
+        print(df_poll.shape)
+        df_poll.columns = ["Id","Options","Duration","DateTime","Voting Status"]
+        
+        #Combine All DataFrames
         frames = [
-            csv_df, dframe_public, dframe_hashtags, df_userinfo, df_media
+            csv_df, dframe_public, dframe_hashtags, df_userinfo, df_media,df_poll
         ]
         csv_df = pd.concat(frames, axis=1)
         csv_data = csv_df.to_csv()
@@ -409,66 +448,66 @@ class Search_View(TemplateView):
             context["status"] = 'not_enter'
         else:
             context["status"] = 'enter'
-            try:
-                max = int(items)
-                page = 1
-                if (int(items) > 100):
-                    max = 100
-                    page = math.ceil(int(items) / 100)
-                response_list = []
-                print("hello")
-                print("Max is ", max)
-                print("Page is ", page)
-                for response in tweepy.Paginator(
-                        api.search_recent_tweets,
-                        query=search,
-                        tweet_fields=[
-                            "id", "text", "attachments", "created_at",
-                            "author_id", "context_annotations",
-                            "conversation_id", "entities", "geo",
-                            "in_reply_to_user_id", "lang",
-                            "possibly_sensitive", "public_metrics",
-                            "referenced_tweets", "reply_settings", "source",
-                            "withheld"
-                        ],
-                        expansions=[
-                            "attachments.poll_ids", "author_id",
-                            "geo.place_id", "attachments.media_keys"
-                        ],
-                        user_fields=[
-                            "id", "name", "location", "url", "created_at",
-                            "description", "username", "profile_image_url",
-                            "public_metrics", "verified", "protected",
-                            "pinned_tweet_id"
-                        ],
-                        media_fields=[
-                            "url", "duration_ms", "height",
-                            "non_public_metrics", "organic_metrics",
-                            "preview_image_url", "promoted_metrics",
-                            "public_metrics", "width", "alt_text"
-                        ],
-                        max_results=max,
-                        limit=page):
-                    response_list.append(response)
-                tweets = []
-                includes = []
-                for response in response_list:
-                    tweets.extend(response.data)
-                    includes.append(response.includes)
-                tweets_json = [
-                    json.dumps(tweet.data, indent=4) for tweet in tweets
-                ]
+            # try:
+            max = int(items)
+            page = 1
+            if (int(items) > 100):
+                max = 100
+                page = math.ceil(int(items) / 100)
+            response_list = []
+            print("hello")
+            print("Max is ", max)
+            print("Page is ", page)
+            for response in tweepy.Paginator(
+                    api.search_recent_tweets,
+                    query=search,
+                    tweet_fields=[
+                        "id", "text", "attachments", "created_at",
+                        "author_id", "context_annotations",
+                        "conversation_id", "entities", "geo",
+                        "in_reply_to_user_id", "lang",
+                        "possibly_sensitive", "public_metrics",
+                        "referenced_tweets", "reply_settings", "source",
+                        "withheld"
+                    ],
+                    expansions=[
+                        "attachments.poll_ids", "author_id",
+                        "geo.place_id", "attachments.media_keys"
+                    ],
+                    user_fields=[
+                        "id", "name", "location", "url", "created_at",
+                        "description", "username", "profile_image_url",
+                        "public_metrics", "verified", "protected",
+                        "pinned_tweet_id"
+                    ],
+                    media_fields=[
+                        "url", "duration_ms", "height",
+                        "non_public_metrics", "organic_metrics",
+                        "preview_image_url", "promoted_metrics",
+                        "public_metrics", "width", "alt_text"
+                    ],
+                    max_results=max,
+                    limit=page):
+                response_list.append(response)
+            tweets = []
+            includes = []
+            for response in response_list:
+                tweets.extend(response.data)
+                includes.append(response.includes)
+            tweets_json = [
+                json.dumps(tweet.data, indent=4) for tweet in tweets
+            ]
 
-                context["data"] = zip(tweets, tweets_json)
+            context["data"] = zip(tweets, tweets_json)
 
-                context["csv_data"] = self.csv_data(tweets, includes)
-                print(context["csv_data"])
-            except (ValueError, TypeError) as error:
-                context["status"] = 'error'
-                context["error"] = error
-            except Exception as error:
-                context["status"] = 'error'
-                context["error"] = error
+            context["csv_data"] = self.csv_data(tweets, includes)
+            print(context["csv_data"])
+            # except (ValueError, TypeError) as error:
+            #     context["status"] = 'error'
+            #     context["error"] = error
+            # except Exception as error:
+            #     context["status"] = 'error'
+            #     context["error"] = error
         return context
 
 
