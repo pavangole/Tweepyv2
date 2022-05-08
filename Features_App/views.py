@@ -352,9 +352,8 @@ class Search_View(TemplateView):
                         public.append(medias['public_metrics']),
                         width.append(medias['width']),
                         alt_text.append(medias['alt_text'])
-                print("Ithe ALOO ")
                 tmp = [
-                    " ".join(media_key),
+                    " ".join(item for item in media_key if item),
                     " ".join(item for item in type1 if item),
                     " ".join(item for item in url if item),
                     " ".join(item for item in duration if item),
