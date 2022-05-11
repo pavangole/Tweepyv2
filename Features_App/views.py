@@ -281,36 +281,51 @@ class Search_View(TemplateView):
         ext = []
         media_info = []
         media = []
+        places = []
         for users in includes:
             page = users.get('users')
             page1 = users.get('media')
             poll_page = users.get('polls')
+            place_page = users.get('places')
+            if place_page:
+                places.extend(place_page)
             if poll_page:
                 polls_info.extend(poll_page)
             ext.extend(page)
             media_info.extend(page1)
-    
+
+        places_info = []
         user_info = []
         public_metrics = []
         dummy = []
         rows = []
         polls_list = []
         for tweet in tweets:
+            #Places
+
+            if tweet['geo'] and tweet['geo'].get('place_id') is not None:
+                for place in places:
+                    if place.id == tweet['geo']['place_id']:
+                        places_info.append([
+                            place.contained_within, place.country,
+                            place.country_code, place.geo, place.place_type,
+                            place.name, place.full_name, place.id
+                        ])
+            else:
+                places_info.append(
+                    [None, None, None, None, None, None, None, None])
 
             #Polls
-            if tweet['attachments'] and tweet['attachments'].get('poll_ids') is not None:
+            if tweet['attachments'] and tweet['attachments'].get(
+                    'poll_ids') is not None:
                 for pol in polls_info:
-                        if pol.id in tweet['attachments']['poll_ids']:
-                            polls_list.append([
-                                pol.id,
-                                pol.options,
-                                pol.duration_minutes,
-                                pol.end_datetime,
-                                pol.voting_status
-
-                            ])
+                    if pol.id in tweet['attachments']['poll_ids']:
+                        polls_list.append([
+                            pol.id, pol.options, pol.duration_minutes,
+                            pol.end_datetime, pol.voting_status
+                        ])
             else:
-                polls_list.append([None,None,None,None,None ])
+                polls_list.append([None, None, None, None, None])
 
             #users
             for user in ext:
@@ -353,15 +368,15 @@ class Search_View(TemplateView):
                         width.append(medias['width']),
                         alt_text.append(medias['alt_text'])
                 tmp = [
-                    " ".join(item for item in media_key if item),
-                    " ".join(item for item in type1 if item),
-                    " ".join(item for item in url if item),
-                    " ".join(item for item in duration if item),
+                    " ".join(str(item) for item in media_key if item),
+                    " ".join(str(item) for item in type1 if item),
+                    " ".join(str(item) for item in url if item),
+                    " ".join(str(item) for item in duration if item),
                     " ".join(str(item) for item in height if item),
-                    " ".join(item for item in image if item),
-                    " ".join(item for item in public if item),
+                    " ".join(str(item) for item in image if item),
+                    " ".join(str(item) for item in public if item),
                     " ".join(str(item) for item in width if item),
-                    " ".join(item for item in alt_text if item),
+                    " ".join(str(item) for item in alt_text if item),
                 ]
                 media.append(tmp)
             else:
@@ -408,7 +423,7 @@ class Search_View(TemplateView):
             "following_count", "followers_count", "tweet_count", "listed_count"
         ]
 
-        #Public Metrics 
+        #Public Metrics
         public_me_col = ["retweet", "reply", "like", "quote"]
         hashtags_col = ["hashtags"]
         dframe_public = pd.DataFrame(public_metrics)
@@ -425,14 +440,25 @@ class Search_View(TemplateView):
             "media_key ", "type", "url", "duration", "height", "image",
             "public", "width", "alt_text"
         ]
-        #Polls 
+        #Polls
         df_poll = pd.DataFrame(polls_list)
         print(df_poll.shape)
-        df_poll.columns = ["Id","Options","Duration","DateTime","Voting Status"]
+        df_poll.columns = [
+            "Id", "Options", "Duration", "DateTime", "Voting Status"
+        ]
+
+        #Places
+        df_place = pd.DataFrame(places_info)
         
+        df_place.columns = [
+            "Contained Within", "country", "country_code", "geo",
+            "place_type", "name", "fullname", "id"
+        ]
+
         #Combine All DataFrames
         frames = [
-            csv_df, dframe_public, dframe_hashtags, df_userinfo, df_media,df_poll
+            csv_df, dframe_public, dframe_hashtags, df_userinfo, df_media,
+            df_poll,df_place
         ]
         csv_df = pd.concat(frames, axis=1)
         csv_data = csv_df.to_csv()
@@ -461,17 +487,16 @@ class Search_View(TemplateView):
                     api.search_recent_tweets,
                     query=search,
                     tweet_fields=[
-                        "id", "text", "attachments", "created_at",
-                        "author_id", "context_annotations",
-                        "conversation_id", "entities", "geo",
-                        "in_reply_to_user_id", "lang",
+                        "id", "text", "attachments", "created_at", "author_id",
+                        "context_annotations", "conversation_id", "entities",
+                        "geo", "in_reply_to_user_id", "lang",
                         "possibly_sensitive", "public_metrics",
                         "referenced_tweets", "reply_settings", "source",
                         "withheld"
                     ],
                     expansions=[
-                        "attachments.poll_ids", "author_id",
-                        "geo.place_id", "attachments.media_keys"
+                        "attachments.poll_ids", "author_id", "geo.place_id",
+                        "attachments.media_keys"
                     ],
                     user_fields=[
                         "id", "name", "location", "url", "created_at",
@@ -480,10 +505,10 @@ class Search_View(TemplateView):
                         "pinned_tweet_id"
                     ],
                     media_fields=[
-                        "url", "duration_ms", "height",
-                        "non_public_metrics", "organic_metrics",
-                        "preview_image_url", "promoted_metrics",
-                        "public_metrics", "width", "alt_text"
+                        "url", "duration_ms", "height", "non_public_metrics",
+                        "organic_metrics", "preview_image_url",
+                        "promoted_metrics", "public_metrics", "width",
+                        "alt_text"
                     ],
                     max_results=max,
                     limit=page):
